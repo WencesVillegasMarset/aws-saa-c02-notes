@@ -115,17 +115,21 @@ Protecting Data:
 Links:
 * https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/snapshot-lifecycle.html
 * https://tutorialsdojo.com/amazon-ebs/%20?src=udemy
+* http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumes.html
 
 **Encryption**: Amazon EBS offers native encryption on all volume types. When you launch an encrypted Amazon EBS volume, Amazon uses the AWS Key Management Service (KMS) to handle key management. A new master key will be created unless you select a master key that you created separately in the service. Your data and associated keys are encrypted using the industry-standard AES-256 algorithm.
 
 ## S3
 
 * Server-side encryption
+  * is about data encryption at rest
   * Amazon S3-Managed encryption keys (SSE-S3) using 256-bit Advanced Encryption Standard (AES-256) block cipher
     * It encrypts the key itself with a master key that it rotates regularly.
     * Request header for SSE-S3: `x-amz-server-side-encryption`
   * Customer provided encryption keys (SSE-C):
     * Headers: `x-amz-server-side​-encryption​-customer-algorithm` , `x-amz-server-side​-encryption​-customer-key` , `x-amz-server-side​-encryption​-customer-key-MD5`
+* Deletion:
+  * Enabling S3 Object Lock prevents your existing and future records from being deleted or overwritten.
 
 
 Links:
@@ -191,6 +195,12 @@ You must do the following to create a public subnet with Internet access:
 * Create a subnet route table rule to send all non-local traffic (0.0.0.0/0) to the IGW.
 * Configure your network ACLs and security group rules to allow relevant traffic to flow to and from your instance.
 
+Subnets and IP Addreses:
+
+* By default, nondefault subnets have the IPv4 public addressing attribute set to false, and **default subnets have this attribute set to true**. An **exception is a nondefault subnet** created by the Amazon EC2 launch instance wizard — the wizard sets the attribute to true. You can modify this attribute using the Amazon VPC console.
+
+* You need to add IPv4 subnet first before you can create an IPv6 subnet
+
 DHCP:
 
 Elastic IPs:
@@ -252,6 +262,21 @@ Links:
   * Latency: serve user requests from the AWS Region that provides the lowest latency. 
     * It does not, however, guarantee that users in the same geographic region will be served from the same location
   * Weighted: associate multiple resources with a single domain name or subdomain name and choose how much traffic is routed to each resource.
+* Failovers:
+  * Set failovers to  static S3 websites bucket or CloudFront distributions is possible.
+
+*Routing traffic to a website that is hosted in an Amazon S3 Bucket*:
+1. An S3 bucket that is configured to host a static website. The bucket must have the same name as your domain or subdomain. For example, if you want to use the subdomain portal.tutorialsdojo.com, the name of the bucket must be portal.tutorialsdojo.com
+2.  registered domain name. You can use Route 53 as your domain registrar, or you can use a different registrar
+3.  Route 53 as the DNS service for the domain. If you register your domain name by using Route 53, we automatically configure Route 53 as the DNS service for the domain.
+
+*Routing traffic to an ELB load balancer*
+
+* use Amazon Route 53 to create an alias record that points to your load balancer.
+* Alias with a type "AAAA" record set and Alias with a type "A" record set, AAAA for IPV6.
+
+
+
 
 
 
@@ -290,6 +315,7 @@ IAM Policies: They are attached to principals. They contain permissions, each pe
   * Content based deduplication: ONLY FIFO, you enable hashing of the body with SHA256 to generate a content-based deduplication ID.
 * Dead letter queues are supported.
 * Server-side encryption is supported with keys managed my KMS.
+* You cannot set a priority to individual items in the SQS queue
 
 
 
@@ -509,9 +535,90 @@ As a rule of thumb, if it takes more than one week to upload your data to AWS us
 
 To detect and mitigate DDoS attacks, you can use AWS WAF in addition to AWS Shield. AWS WAF is a web application firewall that helps detect and mitigate web application layer DDoS attacks by inspecting traffic inline
 
+Simples Behaviours:
+
+* Allow all requests except the ones that you specify
+* Block all requests except the ones that you specify
+* Count the requests that match the properties that you specify
+
 Links: 
 * https://tutorialsdojo.com/aws-waf/?src=udemy
 
 ## Amazon GuardDuty
 
 threat detection service
+
+## AWS Secrets Manager
+
+Use AWS Secrets Manager to store and encrypt the database credentials, API keys, and other secrets. Enable automatic rotation for all of the credentials.
+
+## AWS DataSync
+
+Move large amounts of data online between on-premises storage and Amazon S3, Amazon Elastic File System (Amazon EFS), or Amazon FSx for Windows File Server.
+
+DataSync eliminates or automatically handles many of these tasks, including scripting copy jobs, scheduling, and monitoring transfers, validating data, and optimizing network utilization. The DataSync software agent connects to your Network File System (NFS), Server Message Block (SMB) storage, and your self-managed object storage, so you don’t have to modify your applications.
+
+* use DataSync to migrate active data sets or archives to AWS
+* replicate data to AWS for business continuity
+* deploy the DataSync agent, connect it to your file system, select your AWS storage resources, and start moving data between them
+
+Pricing: You pay only for the data you move
+
+
+## Elastic Load Balancing
+
+**Network Load Balancer**: 
+* functions at the fourth layer of the Open Systems Interconnection (OSI) model, transport layer
+* You CAN assign IPs to these NLB, not like Application ones which work on the 7th layer.
+* If extreme performance and static IP is needed for your application then it is recommend that you use Network Load Balancer
+
+**Application Load Balancer**:
+
+* If you need flexible application management and TLS termination then it is recommended to use Application Load Balancer
+* After the load balancer receives a request, it evaluates the listener rules in priority order to determine which rule to apply, and then selects a target from the target group for the rule action
+
+
+**Classic Load Balance**
+
+* If your application is built within the EC2 Classic network then you should use Classic Load Balancer.
+* 
+
+## AWS GLobal Accelerator
+
+* Global Accelerator is a good fit for non-HTTP use cases
+  * such as gaming (UDP)
+  * IoT (MQTT)
+  * Voice over IP
+  * as well as for HTTP use cases that specifically require static IP addresses or deterministic, fast regional failover
+
+
+## AWS CloudFront
+
+* CloudFront improves performance for both cacheable content (such as images and videos) and dynamic content (such as API acceleration and dynamic site delivery
+
+
+## AWS Config
+
+enables you to assess, audit, and evaluate the configurations of your AWS resources
+
+* monitors and records your AWS resource configurations
+* automate the evaluation of recorded configurations against desired configurations
+* determine your overall compliance against the configurations specified in your internal guidelines
+* review changes in configurations and relationships between AWS resources
+
+Different from CloudTrail which cannot enforce rules to comply with your organization's policies.
+
+## Amazon ECS
+
+* Batch processing:
+  * Batch jobs are often short-lived and embarrassingly parallel. You can package your batch processing application into a Docker image so that you can deploy it anywhere, such as in an Amazon ECS task.
+  * use Amazon ECS Run Task action to run one or more tasks once. The Run Task action starts the ECS task on an instance that meets the task’s requirements including CPU, memory, and ports.
+
+
+## Amazon API Gateway
+
+create, publish, maintain, monitor, and secure APIs at any scale
+
+* Enables you to build RESTful APIs and WebSocket APIs that are optimized for serverless workloads
+* You pay only for the API calls you receive and the amount of data transferred out.
+
