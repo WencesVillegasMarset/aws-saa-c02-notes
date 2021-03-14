@@ -49,6 +49,8 @@ Pricing:
   * All upfront
   * Partial upfront
   * Monthly basis
+  * You cannot reserve capacity to multiple AWS Regions in a single RI purchase.
+  * You can have capacity reservations that recur on a daily, weekly, or monthly basis, with a specified start time and duration, for a one-year term through **Scheduled Reserved Instances**
 * Spot instances: not time critical and tolerant to interruptions, set a bidding price.
 * There is no charge for creating a placement group.
 * Per Second Billing:
@@ -175,6 +177,25 @@ Links:
 * Pause and resume object uploads
 * Begin an upload before you know the final object size, upload as you create an object.
 
+**Performance**
+
+* Amazon S3 now provides increased performance to support at least 3,500 requests per second to add data and 5,500 requests per second to retrieve data.
+* Amazon S3's support for parallel requests means you can scale your S3 performance by the factor of your compute cluster, without making any customizations to your application. Performance scales per prefix, so you can use as many prefixes as you need in parallel to achieve the required throughput. There are no limits to the number of prefixes.
+* This S3 request rate performance increase removes any previous guidance to randomize object prefixes to achieve faster performance.
+
+
+**Lifecycle Policies**
+
+* add rules in a lifecycle configuration to tell Amazon S3 to transition objects to another Amazon S3 storage class
+* you can transition the objects to the INTELLIGENT_TIERING storage class for automatic cost savings.
+* Constraints with STANDARD_IA and ONEZONE_IA:
+  * For larger objects, there is a cost benefit for transitioning to STANDARD_IA or ONEZONE_IA
+  * Objects must be stored at least 30 days in the current storage class before you can transition them to STANDARD_IA or ONEZONE_IA. For example, you cannot create a lifecycle rule to transition objects to the STANDARD_IA storage class one day after you create them. This limitation **does not apply** on INTELLIGENT_TIERING, GLACIER, and DEEP_ARCHIVE storage class.
+
+**Tiers**
+
+Expedited retrievals in Glacier which will allow you to quickly access your data (within 15 minutes) 
+
 Links:
 
 * https://docs.aws.amazon.com/AmazonS3/latest/dev/serv-side-encryption.html
@@ -183,8 +204,19 @@ Links:
 
 Monitoring service for AWS cloud resources and the applications you run on AWS
 
+* Default Metrics:
+  * CPU Utilization
+  * Network Utilization
+  * Disk Reads
 * To monitor custom metrics, you must install the CloudWatch agent on the EC2 instance.
-  * Some custom metrics: SwapUtilization
+  * Some custom metrics: 
+    * Memory utilization
+    * Disk swap utilization
+    * Disk space utilization
+    * Page file utilization
+    * Log collection
+
+
 
 
 ## VPC
@@ -306,6 +338,12 @@ Links:
   * your EC2 instance receives a **static private IPv4 address** from the address range of your default VPC
 
 
+How to access an EC2 instance from the internet?
+
+1. An Internet Gateway (IGW) attached to the VPC
+2. A route entry to the Internet gateway in the Route table of the VPC.
+3. A Public IP address attached to the EC2 instance
+
 ## RDS
 
 * Parameter Groups can be used to apply the same set of settings to a a group of instances.
@@ -324,6 +362,23 @@ Links:
     * encrypted using Secure Socket Layer (SSL) or Transport Layer Security (TLS).
     * IAM to centrally manage access to your database resources, instead of managing access individually on each DB instance.
     * use profile credentials specific to your EC2 instance to access your database instead of a password.
+* **SSL Encryption**
+  * You will have to enable force-SSL encryption in RDS Instance, then reboot.
+  * You will download the automatically generated SSL Cert from RDS and use it your instances in order to access RDS DBs.
+
+**Monitoring**:
+* Enhanced Monitoring metrics are useful when you want to see how different processes or threads on a DB instance use the CPU.
+* CloudWatch gathers metrics about CPU utilization from the hypervisor for a DB instance while RDS Enhanced Monitoring gathers its metrics from an agent on the instance, more precision and granularity.
+
+
+
+**Migration**:
+
+* AWS Database Migration Service helps you migrate databases to AWS quickly and securely
+  * supports homogeneous migrations such as Oracle to Oracle, as well as heterogeneous migrations between different database platforms, as well as from one RDS database to another RDS database
+  * Steps:
+    * First use the AWS Schema Conversion Tool to convert the source schema and code to match that of the target database.
+    * then use the AWS Database Migration Service to migrate data from the source database to the target database
 
 
 **Billing**:
@@ -387,6 +442,16 @@ Links:
 * Scheduled
 * Predictive: . Predictive scaling uses machine learning to analyze each resource’s historical workload and regularly forecasts the future load for the next two days.
 * Dynamic: Dynamic scaling creates target tracking scaling policies for the resources in your scaling plan
+* **Default termination policy**:
+  1. If there are instances in multiple Availability Zones, choose the Availability Zone with the most instances and at least one instance that is not protected from scale in. If there is more than one Availability Zone with this number of instances, choose the Availability Zone with the instances that use the oldest launch configuration.
+
+  2. Determine which unprotected instances in the selected Availability Zone use the oldest launch configuration. If there is one such instance, terminate it.
+
+  3. If there are multiple instances to terminate based on the above criteria, determine which unprotected instances are closest to the next billing hour. (This helps you maximize the use of your EC2 instances and manage your Amazon EC2 usage costs.) If there is one such instance, terminate it.
+
+  4. If there is more than one unprotected instance closest to the next billing hour, choose one of these instances at random.
+
+
 
 ## Identity and Access Management 
 
@@ -452,8 +517,15 @@ IAM Policies: They are attached to principals. They contain permissions, each pe
 * Deployment package size: 50zip, 250mb unzipped
 * Deployment packages size per region: 75gb.
 * Usage patterns: Real-time File Processing, Stream Processing, ETL, Replacing CRON, Processing AWS Events i.e CloudTrail
+* Environment Vars Encryption:
+  * They are not encrypted by default, you have to do it with KMS. 
+  * When creating lambdas, a KMS default key is created, but you have to create your own for it to work.
+  * Use encryption helpers and use KMS to encrypt environment variables after your Lambda function is created, you must create your own AWS KMS key and choose it instead of the default key.
+
 
 ## API Gateway
+
+create, publish, maintain, monitor, and secure APIs at any scale
 
 * Types: REST API, WebSocket API, HTTP API (Proxy to http backends or Lambda).
 * It provides
@@ -465,6 +537,15 @@ IAM Policies: They are attached to principals. They contain permissions, each pe
   * Deployment stages.
   * Open API Spec support.
   * SDK generation for iOS, Android and JS.
+
+* Enables you to build RESTful APIs and WebSocket APIs that are optimized for serverless workloads
+* You pay only for the API calls you receive and the amount of data transferred out.
+* HTTP is not supported, only HTTPS.
+
+API owners can set a rate limit of 1,000 requests per second for a specific method in their REST APIs, and also configure Amazon API Gateway to handle a burst of 2,000 requests per second for a few seconds. *Any request over the limit will receive a 429 HTTP response*
+
+* You can enable throttling limits and result caching in API Gateway
+  * Amazon API Gateway provides throttling at multiple levels including global and by a service call. Throttling limits can be set for standard rates and bursts
   
 ## Kinesis
 
@@ -482,6 +563,10 @@ Data Streams:
   * Data Stream: Logical grouping of shards.
   * Shard: Append only log, ingest up to 1000 records per second, up to 5 read transactions per second.
   * Partition Key, Sequence Number.
+* Performance:
+  * More shards, more expensive, more data capacity.
+  * You can do resharding: shard split and shard merge. This is done by pairs, i.e you cannot split or merge by more than 2 shards at a time.
+  * Scale without limits via incresing shards, do it it the *UpdateShardCount* command.
 * Pricing: 
   * Charged by shard by hourly rate.
   * Per million payloads billing.
@@ -492,6 +577,7 @@ Firehose:
 * You can load streaming data into data stores.
 * You pay only for the data you transmit.
 * The streaming data is replicated to 3 AZs within a region.
+* Ideal technology for an EVENT STORE, in case you app is event-sourced.
 
 Data Analytics:
 * Use standard SQL to process and analyze streams.
@@ -657,7 +743,8 @@ Links:
 
 ## Amazon GuardDuty
 
-threat detection service
+threat detection service that continuously monitors for malicious activity and unauthorized behavior to protect your AWS accounts and workloads.
+
 
 ## AWS Secrets Manager
 
@@ -672,11 +759,19 @@ DataSync eliminates or automatically handles many of these tasks, including scri
 * use DataSync to migrate active data sets or archives to AWS
 * replicate data to AWS for business continuity
 * deploy the DataSync agent, connect it to your file system, select your AWS storage resources, and start moving data between them
+* All of your data is encrypted in transit with Transport Layer Security (TLS). DataSync supports using default encryption for S3 buckets, Amazon EFS file system encryption of data at rest, and Amazon FSx for Windows File Server encryption at rest and in transit.
+* DataSync comes with a built-in scheduling mechanism enabling you to periodically execute a data transfer task to detect and copy changes from your source storage system to the destination
+* The DataSync agent connects to your existing storage systems using the industry-standard NFS and SMB protocols, or to your self-managed object storage, using the Amazon S3 API
 
-Pricing: You pay only for the data you move
+Pricing: 
+* You pay only for data copied by the service, at a flat, per-gigabyte rate—no software licenses, contracts, maintenance fees, development cycles, or required hardware
 
 
 ## Elastic Load Balancing
+
+* Provides access logs that capture detailed information about requests sent to your load balancer
+* Access logging is an optional feature of Elastic Load Balancing that is disabled by default. 
+* After you enable access logging for your load balancer, Elastic Load Balancing captures the logs and stores them in the Amazon S3 bucket that you specify as compressed files
 
 **Network Load Balancer**: 
 * functions at the fourth layer of the Open Systems Interconnection (OSI) model, transport layer
@@ -692,7 +787,7 @@ Pricing: You pay only for the data you move
 **Classic Load Balance**
 
 * If your application is built within the EC2 Classic network then you should use Classic Load Balancer.
-* 
+* If you have multi-AZ deployment, enable Cross-Zone deployment if not you won't be able to route traffic to the other AZs.
 
 ## AWS GLobal Accelerator
 
@@ -705,7 +800,38 @@ Pricing: You pay only for the data you move
 
 ## AWS CloudFront
 
-* CloudFront improves performance for both cacheable content (such as images and videos) and dynamic content (such as API acceleration and dynamic site delivery
+* CloudFront improves performance for both cacheable content (such as images and videos) and dynamic content (such as API acceleration and dynamic site delivery.
+* Origin Shield: enable a centralized caching layer. Origin Shield optimizes cache hit ratios and collapses requests across regions leading to as few as one origin request per object.
+* Enabling redundancy for origins: CloudFront supports multiple origins for backend architecture redundancy. CloudFront’s native origin failover capability automatically serves content from a backup origin when the primary origin is unavailable
+
+* **Lambda@Edge** is a feature of Amazon CloudFront that lets you run code closer to users of your application, which improves performance and reduces latency
+  * functions run in response to CloudFront events, without provisioning or managing servers
+  * You can use Lambda functions to change CloudFront requests and responses at the following points:
+    * After CloudFront receives a request from a viewer (viewer request)
+    * Before CloudFront forwards the request to the origin (origin request)
+    * After CloudFront receives the response from the origin (origin response)
+    * Before CloudFront forwards the response to the viewer (viewer response)
+* If you have multiple 504 errors you can:
+  * Set up an origin failover by creating an origin group with two origins with one as the primary origin and the other as the second origin which CloudFront automatically switches to when the primary origin fails.
+
+**Access Control**:
+* signed URLs or signed cookies
+* If you want to serve private content through CloudFront and you're trying to decide whether to use signed URLs or signed cookies, consider the following:
+  * Use **signed URLs** for the following cases:
+    * You want to use an RTMP distribution. Signed cookies aren't supported for RTMP distributions.
+    * You want to restrict access to individual files, for example, an installation download for your application.
+    * Your users are using a client (for example, a custom HTTP client) that doesn't support cookies.
+  * Use **signed cookies** for the following cases:
+    * provide access to multiple restricted files, for example, all of the files for a video in HLS format or all of the files in the subscribers' area of a website
+    * You don't want to change your current URLs
+
+
+
+
+Real-time Metrics and Logging
+* Standard logs are delivered to the Amazon S3 bucket of your choice
+* real-time logs are delivered to the data stream of your choice in Amazon Kinesis Data Streams
+
 
 
 ## AWS Config
@@ -724,14 +850,24 @@ Different from CloudTrail which cannot enforce rules to comply with your organiz
 * Batch processing:
   * Batch jobs are often short-lived and embarrassingly parallel. You can package your batch processing application into a Docker image so that you can deploy it anywhere, such as in an Amazon ECS task.
   * use Amazon ECS Run Task action to run one or more tasks once. The Run Task action starts the ECS task on an instance that meets the task’s requirements including CPU, memory, and ports.
+* Launch Types:
+  * Fargate:run your containerized applications without the need to provision and manage the backend infrastructure. After you register your task definition, Fargate launches the container for you
+  * EC2: run your containerized applications on a cluster of Amazon EC2 instances that you manage.
 
 
-## Amazon API Gateway
 
-create, publish, maintain, monitor, and secure APIs at any scale
+**Secrets**:
 
-* Enables you to build RESTful APIs and WebSocket APIs that are optimized for serverless workloads
-* You pay only for the API calls you receive and the amount of data transferred out.
+Amazon ECS enables you to inject sensitive data into your containers by storing your sensitive data in either **AWS Secrets Manager** secrets or **AWS Systems Manager Parameter Store** parameters. Both with EC2 and Fargate launch types.
+
+Ways to expose secrets to a container:
+* To inject sensitive data into your containers as environment variables, use the secrets container definition parameter.
+  * specify `secrets` with the name of the environment variable to set in the container and the full ARN of either the Secrets Manager secret or Systems Manager Parameter Store parameter
+* To reference sensitive information in the log configuration of a container, use the secretOptions container definition parameter.
+
+
+
+
 
 ## AWS Organizations
 
@@ -773,14 +909,141 @@ launch and run popular file systems that are fully managed by AWS
 * designed to be accessed through an Amazon EC2 instance.
 * Redis:
   * Redis authentication tokens, or passwords, enable Redis to require a password before allowing clients to run commands, thereby improving data security
+  * creating a new Redis Cluster with both the `--transit-encryption-enabled` and `--auth-token` parameters enabled, to Authenticate the users using Redis AUTH
 
 
 ## AWS CloudFormation
 
 * Create templates for the service or application architectures you want and have AWS CloudFormation use those templates for quick and reliable provisioning
-* JSON or YAML
-* Resources is the only required field.
+* JSON, YAML, .template, or .txt
+* **Templates**
+  * When you use CloudFormation, you manage related resources as a single unit called a stack
+  * You create, update, and delete a collection of resources by creating, updating, and deleting stacks.
+  * If you need to make changes to the running resources in a stack, you update the stack. Before making changes to your resources, you can generate a change set, which is a summary of your proposed changes. Change sets allow you to see how your changes might impact your running resources, especially for critical resources, before implementing them.
+  * Fields:
+    * Format Version (optional)
+      * The AWS CloudFormation template version that the template conforms to
+    * Description (optional)
+      * A text string that describes the template
+    * Metadata (optional)
+      * Objects that provide additional information about the template.
+    * Parameters (optional)
+      * Values to pass to your template at runtime (when you create or update a stack). You can refer to parameters from the Resources and Outputs sections of the template.
+    * Rules (optional)
+      * Validates a parameter or a combination of parameters passed to a template during a stack creation or stack update.
+    * Mappings (optional)
+      * A mapping of keys and associated values that you can use to specify conditional parameter values, similar to a lookup table
+    * Conditions (optional)
+      * control whether certain resources are created or whether certain resource properties are assigned a value during stack creation or update, i.e ENV condition wrt DEV, STG, PRD
+    * Transform (optional)
+      * For serverless applications (also referred to as Lambda-based applications), specifies the version of the AWS Serverless Application Model (AWS SAM) to use
+    * Resources (required)
+      * Specifies the stack resources and their properties, such as an Amazon Elastic Compute Cloud instance or an Amazon Simple Storage Service bucket
+    * Outputs (optional)
+      * Describes the values that are returned whenever you view your stack's properties. For example, you can declare an output for an S3 bucket name and then call the aws `cloudformation describe-stacks` AWS CLI command to view the name.
+
+
+
 
 ## AWS Open Data
 
 * This has no extra price, datasets are free and open.
+
+
+## Amazon Aurora
+
+* Aurora Serverless Failover:
+  * Aurora will attempt to create a new DB Instance in the same Availability Zone as the original instance and is done on a best-effort basis. If that fails: Aurora will automatically recreate the DB instance in a different AZ.
+* typically involves a cluster of DB instances instead of a single instance
+  * When you connect to an Aurora cluster, the host name and port that you specify point to an intermediate handler called an endpoint
+  * Using **endpoints**, you can map each connection to the appropriate instance or group of instances based on your use case
+
+
+## AWS CloudTrail
+
+* CloudTrail event log files are encrypted using Amazon S3 server-side encryption (SSE) BY DEFAULT.
+* You can also choose to encrypt your log files with an AWS Key Management Service (AWS KMS) key.
+* CloudTrail is enabled by default for your AWS account. You can use Event history in the CloudTrail console to view, search, download, archive, analyze, and respond to account activity across your AWS infrastructure. This includes activity made through the AWS Management Console, AWS Command Line Interface, and AWS SDKs and APIs.
+* Create a trail: A trail enables CloudTrail to deliver log files to an Amazon S3 bucket.
+  * A trail can apply to one region or all regions.
+* If you have created an organization in AWS Organizations, you can create a trail that will log all events for all AWS accounts in that organization. Creating an organization trail helps you define a uniform event logging strategy for your organization.
+
+
+**Management events**
+* Provide information about management operations that are performed on resources in your AWS account. These are also known as control plane operations
+  * Examples:
+    * Configuring security (for example, IAM AttachRolePolicy API operations).
+    * Registering devices (for example, Amazon EC2 CreateDefaultVpc API operations).
+    * Configuring rules for routing data (for example, Amazon EC2 CreateSubnet API operations
+    * Setting up logging (for example, AWS CloudTrail CreateTrail API operations).
+  
+**Data Events**
+* provide information about the resource operations performed on or in a resource. These are also known as data plane operations. Data events are often high-volume activities
+  * Examples:
+    * Amazon S3 object-level API activity (for example, GetObject, DeleteObject, and PutObject API operations).
+    * AWS Lambda function execution activity (the Invoke API).
+    * Amazon S3 object-level API activity on AWS Outposts.
+    * Amazon Managed Blockchain API calls on Ethereum nodes, such as eth_getBalance or eth_getBlockByNumber.
+* Data events are **not logged by default** when you create a trail
+
+**Insights events**
+* capture unusual activity in your AWS account
+* Insights events are logged to a different folder or prefix in the destination S3 bucket for your trail
+* Examples
+  * Your account typically logs no more than 20 Amazon S3 deleteBucket API calls per minute, but your account starts to log an average of 100 deleteBucket API calls per minute
+
+
+Pricing:
+
+* You can view, filter, and download the most recent 90 days of your account activity for all management events in supported AWS services free of charge.
+* You can set up a trail that delivers a single copy of management events in each region free of charge.
+* The first copy of management events within each region is delivered free of charge. Additional copies of management events are charged $2.00 per 100,000 events.
+* Data events are recorded only for the Lambda functions and S3 buckets you specify and are charged at $0.10 per 100,000 events.
+* CloudTrail Insights events are charged at $0.35 per 100,000 write management events analyzed. If CloudTrail Insights detects unusual activity, it delivers an Insights event to you.
+
+
+
+
+
+
+
+
+
+## AWS Storage Gateway
+
+**Cached Volume Gateway**:
+
+* By using cached volumes, you can use Amazon S3 as your primary data storage, while retaining frequently accessed data locally in your storage gateway
+* Cached volumes minimize the need to scale your on-premises storage infrastructure, while still providing your applications with low-latency access to frequently accessed data
+* When you write to these volumes, your gateway stores the data in Amazon S3. It retains the recently read data in your on-premises storage gateway's cache and uploads buffer storage.
+
+**File Gateway**
+* store and retrieve objects in Amazon S3 using industry-standard file protocols such as Network File System (NFS) and Server Message Block (SMB
+* The gateway is deployed into your on-premises environment as a virtual machine (VM) running on VMware ESXi, Microsoft Hyper-V, or Linux Kernel-based Virtual Machine (KVM) hypervisor
+
+## AWS CloudHSM
+
+* The keys are lost permanently if you did not have a copy.
+
+## Amazon Macie
+
+ML-powered security service that helps you prevent data loss by automatically discovering, classifying, and protecting sensitive data stored in Amazon S3.
+
+* recognize sensitive data such as personally identifiable information (PII) or intellectual property
+* assigns a business value, and provides visibility into where this data is stored and how it is being used in your organization
+* detect global access permissions inadvertently being set on sensitive data
+* detect uploading of API keys inside source code,
+* verify sensitive customer data is being stored and accessed in a manner that meets their compliance standards
+
+## Amazon Inspector
+
+Inspector is basically an automated security assessment service that helps improve the security and compliance of applications deployed on AWS.
+
+## AWS Backups
+
+## AWS Shield
+
+* network and transport layer protections 
+* For higher levels of protection against attacks targeting your applications running on Amazon Elastic Compute Cloud (EC2), Elastic Load Balancing(ELB), Amazon CloudFront, and Amazon Route 53 resources, you can subscribe to AWS Shield Advanced.
+  * AWS Shield Advanced provides additional detection and mitigation against large and sophisticated DDoS attacks, near real-time visibility into attacks, and integration with AWS WAF
+  * 24x7 access to the AWS DDoS Response Team (DRT) and protection against DDoS related spikes in your Amazon Elastic Compute Cloud (EC2), Elastic Load Balancing(ELB), Amazon CloudFront, and Amazon Route 53 charges.
