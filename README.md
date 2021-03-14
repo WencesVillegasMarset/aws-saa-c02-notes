@@ -50,6 +50,14 @@ Pricing:
   * Partial upfront
   * Monthly basis
 * Spot instances: not time critical and tolerant to interruptions, set a bidding price.
+* There is no charge for creating a placement group.
+* Per Second Billing:
+  * EC2 usage are billed on one second increments, with a minimum of 60 seconds
+  * Avalilable for:
+    * On-Demand, Reserved and Spot forms
+    * All regions and Availability Zones  
+    * Amazon Linux and Ubuntu
+
 
 The more upfront, the bigger the discount.
 
@@ -60,16 +68,33 @@ Reservation changes:
 
 Tenancy: Shared (default), Dedicated Instances, Dedicated Host.
 
-
 **Placement groups**: A placement group is a logical grouping of instances within a single Availability Zone. Placement groups enable applications to participate in a low-latency, 10 Gbps network.
 
-TODO: PUT PLACEMENT GROUP CLAS 
+* Strategies:
+  * Cluster: packs instances close together inside an Availability Zone. Low latency performance, ideal for HPC.
+  * Partition: instances in one partition do not share the underlying hardware with groups of instances in different partitions, ideal for replicated workloads, such as Hadoop, Cassandra, and Kafka.
+  * Spread: strictly places a small group of instances across distinct underlying hardware to reduce correlated failures.
+* Rules:
+  * You can't merge placement groups.
+  * An instance can be launched in one placement group at a time; it cannot span multiple placement groups
+  * You cannot reserve capacity for a specific placement group, it's on an AZ level.
+  * Name must be unique for the region and account.
+  * For partitions, you cannot have more than 7 partitions per AZ.
+
+
 
 Instance Store: Instance stores are included in the cost of an Amazon EC2 instance, so they are a very costeffective solution for appropriate workloads. The key aspect of instance stores is that they are temporary. 
 Data in the instance store is lost when:
 * The underlying disk drive fails.
 * The instance stops (the data will persist if an instance reboots).
 * The instance terminates.
+
+**Elastic Network Adapter**
+
+* high performance networking
+* provides up to 20 Gbps of consistent, low-latency performance when used within a Placement Group, at no extra charge!
+* ENA will scale as network bandwidth grows and the vCPU count increases
+
 
 ## EBS
 * Each Amazon EBS volume is automatically replicated within its Availability Zone to protect you from component failure.
@@ -131,6 +156,24 @@ Links:
 * Deletion:
   * Enabling S3 Object Lock prevents your existing and future records from being deleted or overwritten.
 
+* **Replication**
+  * Asynchronous, between buckets from the same or different account.
+  * Single destination bucket and Multiple destination buckets.
+  * It's not retroactive.
+    * You can enable "Replication for Existing Objects" via support ticket.
+  * Versioning must be enabled in all buckets.
+  * Permissions for replication must be provided.
+  * If object lock is active at source, then destination must have it too.
+
+**Multipart Uploads**
+
+* upload parts of your object in parallel thus, decreasing the time it takes to upload big objects
+* Each part is a contiguous portion of the object's data
+* If transmission of any part fails, you can retransmit that part without affecting other parts
+* when your object size reaches 100 MB, you should consider using multipart uploads
+* Improved throughput
+* Pause and resume object uploads
+* Begin an upload before you know the final object size, upload as you create an object.
 
 Links:
 
@@ -219,6 +262,21 @@ Elastic Network Interface:
 
 This is not transitive, meaning that if a VPC1 and VPC2 are peered and VPC1 has a NAT Gateway, VPC2 cant access the internet via it's peer connection and then gateway.
 
+**NAT**
+
+THIS IS A IPV4 ONLY SERVICE, for IPv6 traffic use *egress-only Internet gateway*.
+
+* NAT Gateway:
+  * Managed service, Can scale up to 45 Gbps, optimized for handling NAT traffic
+    * Charged depending on the number of NAT gateways you use, duration of usage, and amount of data that you send through the NAT gateways.	
+    * Uses Elastic IP
+* NAT Instances:
+  * Use a script to manage failover between instances.
+  * Bandwith: Depends on the bandwidth of the instance type
+  * It's a generic Amazon Linux AMI that's configured to perform NAT.
+
+* https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-comparison.html
+
 **How to create a VPN connection to a corporate network?**
 
 To create a VPN connection, you must create a customer gateway resource in AWS, which provides information to AWS about your customer gateway device. Next, you have to set up an Internet-routable IP address (static) of the customer gateway's external interface. 
@@ -236,6 +294,18 @@ https://docs.aws.amazon.com/vpc/latest/userguide/SetUpVPNConnections.html
 Links:
 * Bastion: https://docs.aws.amazon.com/quickstart/latest/linux-bastion/architecture.html
 
+**Multicast Networking**:
+
+* Multicast Nworking is not supported by VPC, you will have to implement it at OS level in you compute resources.
+
+**EC2-VPC vs EC2-Classic**
+
+* EC2-Classic:
+  * your EC2 instance receives a **private IPv4 address** from the EC2-Classic range **each time** it's started
+* EC2-VPC:
+  * your EC2 instance receives a **static private IPv4 address** from the address range of your default VPC
+
+
 ## RDS
 
 * Parameter Groups can be used to apply the same set of settings to a a group of instances.
@@ -246,7 +316,26 @@ Links:
     * Loss of network connectivity to primary
     * Compute unit failure on primary
     * Storage failure on primary
+* IAM DB Authentication
+  * authenticate to your DB instance using AWS Identity and Access Management (IAM) database authentication
+  * works with MySQL and PostgreSQL
+  * you don't need to use a password when you connect to a DB instance. Instead, you use an authentication token.
+  * Benefits:
+    * encrypted using Secure Socket Layer (SSL) or Transport Layer Security (TLS).
+    * IAM to centrally manage access to your database resources, instead of managing access individually on each DB instance.
+    * use profile credentials specific to your EC2 instance to access your database instead of a password.
 
+
+**Billing**:
+* RDS is billed by the follwing components:
+  * DB Instance Hours
+  * Storage per GB per Month
+  * I/O Requests per 1 Million requests per month.
+  * Provisioned IOPS
+  * Backup Storage GB per month.
+  * Data Transfer per GB.
+
+You can request an On-Demand instance or Reserved Instance.
 
 Links:
 * https://aws.amazon.com/rds/features/multi-az/
@@ -275,7 +364,20 @@ Links:
 * use Amazon Route 53 to create an alias record that points to your load balancer.
 * Alias with a type "AAAA" record set and Alias with a type "A" record set, AAAA for IPV6.
 
+**Supported Record Types**:
 
+- A (address record)
+- AAAA (IPv6 address record)
+- CNAME (canonical name record)
+- CAA (certification authority authorization)
+- MX (mail exchange record)
+- NAPTR (name authority pointer record)
+- NS (name server record)
+- PTR (pointer record)
+- SOA (start of authority record)
+- SPF (sender policy framework)
+- SRV (service locator)
+- TXT (text record)
 
 
 
@@ -293,6 +395,15 @@ Principals:
 An entity that is allowed to interact with Resources. Root user, IAM Users and Roles/Temporary Security Tokens
 
 IAM Policies: They are attached to principals. They contain permissions, each permission is composed of (Effect - allow/deny, Service, Resource - arn), Action, Condition)
+
+**AWS Security Token Service**:
+
+* Temporary credentials are useful in scenarios that involve identity federation, delegation, cross-account access, and IAM roles.
+* Enterprise identity federation: authenticate users in your organization's network, and then provide those users access to AWS without creating new AWS identities.
+  * Custom federation broker
+  * Federation using SAML 2.0
+* Web identity federation: users sign in using a well-known third party identity provider such as Login with Amazon, Facebook, Google, or any OpenID Connect (OIDC) 2.0 compatible provider
+  * supports Login with Amazon, Facebook, Google, and any OpenID Connect (OIDC)-compatible identity provider.
 
 ## EFS: Elastic File System
 
@@ -395,7 +506,7 @@ Links:
 
 ## AWS Elastic BeanStalk
 
-You can deploy Web Server based apps and Worker based apps (a background process listening to SQS).
+You can deploy Web Server based apps and Worker based apps (a background process listening to SQS). EVERYTHING IS MANAGED.
 
 * Components of a Beanstalk app:
   * Environment: Infrastructure supporting the app, you can define multiple envoronments: DEV, STG and PRD for example.
@@ -412,7 +523,7 @@ You can deploy Web Server based apps and Worker based apps (a background process
   * Passenger or Puma for Ruby applications
   * Microsoft IIS 7.5, 8.0, and 8.5 for .NET applications
   * Java SE
-  * Docker
+  * **Docker**
   * Go
 
 ## Amazon Cogniro
@@ -622,3 +733,54 @@ create, publish, maintain, monitor, and secure APIs at any scale
 * Enables you to build RESTful APIs and WebSocket APIs that are optimized for serverless workloads
 * You pay only for the API calls you receive and the amount of data transferred out.
 
+## AWS Organizations
+
+centrally manage and govern your environment as you grow and scale your AWS resources
+
+* programmatically create new AWS accounts and allocate resources
+* group accounts to organize your workflows
+* apply policies to accounts or groups for governance
+* simplify billing by using a **single payment method** for all of your accounts
+* Every organization in AWS Organizations has a management account that pays the charges of all the member accounts.
+* 
+
+
+Pricing: This has no additional charge.
+
+## Amazon FSx
+
+launch and run popular file systems that are fully managed by AWS
+
+* Amazon FSx for Windows File Server
+  * S3 Incompatible
+* Amazon FSx for Lustre
+  * machine learning, high-performance computing (HPC), video rendering, and financial simulations
+  * FSx for Lustre file systems can also be linked to Amazon S3 buckets
+    * Uses the S3 API
+
+
+## Amazon CodeDeploy
+
+* automates software deployments to a variety of compute services such as Amazon EC2, AWS Fargate, AWS Lambda, and your on-premises servers
+* This only deploys code, not resources like OpsWorks.
+* handles the complexity of updating your applications
+* AWS CodeDeploy can perform blue/green deployments to Amazon EC2 instances
+  * For Amazon EC2 instances, an Amazon ECS service (both EC2 and AWS Fargate launch type), or an AWS Lambda function.
+* Rolling updates are supported.
+
+## ElastiCache
+
+* designed to be accessed through an Amazon EC2 instance.
+* Redis:
+  * Redis authentication tokens, or passwords, enable Redis to require a password before allowing clients to run commands, thereby improving data security
+
+
+## AWS CloudFormation
+
+* Create templates for the service or application architectures you want and have AWS CloudFormation use those templates for quick and reliable provisioning
+* JSON or YAML
+* Resources is the only required field.
+
+## AWS Open Data
+
+* This has no extra price, datasets are free and open.
