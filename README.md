@@ -41,6 +41,15 @@ Modifications after launch:
 * Instance Type, you need to stop the isntance in order to do it.
 * Security Grooups: Only if they are running within a VPC
 
+**States**:
+
+![alt](/img/instance_lifecycle.png)
+
+* Running is billed only.
+* Stopping: Billed if preparing to hibernate
+* Reserved Instances that applied to terminated instances are billed until the end of their term according to their payment option.
+* All the rest are not billed.
+
 
 Pricing:
 
@@ -82,8 +91,6 @@ Tenancy: Shared (default), Dedicated Instances, Dedicated Host.
   * You cannot reserve capacity for a specific placement group, it's on an AZ level.
   * Name must be unique for the region and account.
   * For partitions, you cannot have more than 7 partitions per AZ.
-
-
 
 Instance Store: Instance stores are included in the cost of an Amazon EC2 instance, so they are a very costeffective solution for appropriate workloads. The key aspect of instance stores is that they are temporary. 
 Data in the instance store is lost when:
@@ -158,6 +165,18 @@ Links:
 * Deletion:
   * Enabling S3 Object Lock prevents your existing and future records from being deleted or overwritten.
 
+* Client side encryption
+  * How client-side encryption using *client-side master key* works:
+    1. The Amazon S3 encryption client generates a one-time-use symmetric key (also known as a data encryption key or data key) locally. It uses the data key to encrypt the data of a single Amazon S3 object. The client generates a separate data key for each object.
+
+    2. The client encrypts the data encryption key using the master key that you provide. The client uploads the encrypted data key and its material description as part of the object metadata. The client uses the material description to determine which client-side master key to use for decryption.
+
+    3. The client uploads the encrypted data to Amazon S3 and saves the encrypted data key as object metadata `x-amz-meta-x-amz-key` in Amazon S3.
+ * How client-side encryption using *KMS-managed customer master key* works: 
+   * with a KMS-managed customer master key, you provide an AWS KMS customer master key ID (CMK ID) to AWS
+
+
+
 * **Replication**
   * Asynchronous, between buckets from the same or different account.
   * Single destination bucket and Multiple destination buckets.
@@ -166,6 +185,12 @@ Links:
   * Versioning must be enabled in all buckets.
   * Permissions for replication must be provided.
   * If object lock is active at source, then destination must have it too.
+
+**Privacy of Objects**
+
+* all objects are private by default.
+* the object owner can optionally share objects with others by creating a pre-signed URL, using their own security credentials, to grant time-limited permission to download the objects
+* if you have a video in your bucket and both the bucket and the object are private, you can share the video with others by generating a pre-signed URL
 
 **Multipart Uploads**
 
@@ -182,6 +207,9 @@ Links:
 * Amazon S3 now provides increased performance to support at least 3,500 requests per second to add data and 5,500 requests per second to retrieve data.
 * Amazon S3's support for parallel requests means you can scale your S3 performance by the factor of your compute cluster, without making any customizations to your application. Performance scales per prefix, so you can use as many prefixes as you need in parallel to achieve the required throughput. There are no limits to the number of prefixes.
 * This S3 request rate performance increase removes any previous guidance to randomize object prefixes to achieve faster performance.
+* **Amazon S3 Transfer Acceleration**, you can speed up content transfers to and from Amazon S3 by as much as 50-500% for long-distance transfer of larger objects.
+  * **Transfer Acceleration** bucket-level feature that enables fast, easy, and secure transfers of files over long distances between your client and an S3 bucket
+  * Data is sent to edge locations, the data is routed to Amazon S3 over an optimized network path.
 
 
 **Lifecycle Policies**
@@ -231,7 +259,7 @@ accounts that support EC2-VPC will have a default VPC created in each region wit
 subnet created in each Availability Zone. The assigned CIDR block of the VPC will be
 172.31.0.0/16.
 
-Subnets:
+**Subnets**:
 
 AWS reserves the first four IP addresses and the last IP address of every subnet for internal networking purposes.
 
@@ -294,6 +322,21 @@ Elastic Network Interface:
 
 This is not transitive, meaning that if a VPC1 and VPC2 are peered and VPC1 has a NAT Gateway, VPC2 cant access the internet via it's peer connection and then gateway.
 
+**Transit Gateway**:
+
+* interconnect your virtual private clouds (VPCs) and on-premises networks through a central hub.
+* This simplifies your network and puts an end to complex peering relationships. 
+* As you expand globally, inter-Region peering connects AWS Transit Gateways together using the AWS global network
+* It acts as a cloud router – each new connection is only made once.
+* Your data is automatically encrypted, and never travels over the public internet.
+
+Pricing:
+
+* you are charged for the number of connections that you make to the Transit Gateway per hour and the amount of traffic that flows through AWS Transit Gateway.
+* Per connection and per GB.
+
+
+
 **NAT**
 
 THIS IS A IPV4 ONLY SERVICE, for IPv6 traffic use *egress-only Internet gateway*.
@@ -337,7 +380,6 @@ Links:
 * EC2-VPC:
   * your EC2 instance receives a **static private IPv4 address** from the address range of your default VPC
 
-
 How to access an EC2 instance from the internet?
 
 1. An Internet Gateway (IGW) attached to the VPC
@@ -367,10 +409,8 @@ How to access an EC2 instance from the internet?
   * You will download the automatically generated SSL Cert from RDS and use it your instances in order to access RDS DBs.
 
 **Monitoring**:
-* Enhanced Monitoring metrics are useful when you want to see how different processes or threads on a DB instance use the CPU.
+* **Enhanced Monitoring** metrics are useful when you want to see how different processes or threads on a DB instance use the CPU.
 * CloudWatch gathers metrics about CPU utilization from the hypervisor for a DB instance while RDS Enhanced Monitoring gathers its metrics from an agent on the instance, more precision and granularity.
-
-
 
 **Migration**:
 
@@ -379,7 +419,11 @@ How to access an EC2 instance from the internet?
   * Steps:
     * First use the AWS Schema Conversion Tool to convert the source schema and code to match that of the target database.
     * then use the AWS Database Migration Service to migrate data from the source database to the target database
+* It's kinda priced like EC2 instances
 
+
+**Not supported**:
+* Oracle RMAN and RAC are not supported in RDS
 
 **Billing**:
 * RDS is billed by the follwing components:
@@ -737,6 +781,9 @@ Simples Behaviours:
 * Allow all requests except the ones that you specify
 * Block all requests except the ones that you specify
 * Count the requests that match the properties that you specify
+* You can specify regular and rate-based rules.
+
+When you have an issue like changing IPs throwing drive-by traffic, create a Rate-based rule and associate the ACL with the service being shot at.
 
 Links: 
 * https://tutorialsdojo.com/aws-waf/?src=udemy
@@ -952,11 +999,16 @@ launch and run popular file systems that are fully managed by AWS
 
 ## Amazon Aurora
 
-* Aurora Serverless Failover:
+* Aurora Serverless **Failover**:
   * Aurora will attempt to create a new DB Instance in the same Availability Zone as the original instance and is done on a best-effort basis. If that fails: Aurora will automatically recreate the DB instance in a different AZ.
 * typically involves a cluster of DB instances instead of a single instance
   * When you connect to an Aurora cluster, the host name and port that you specify point to an intermediate handler called an endpoint
   * Using **endpoints**, you can map each connection to the appropriate instance or group of instances based on your use case
+* A non-Serverless DB cluster for Aurora is called a provisioned DB cluster
+* Scaling is rapid because it uses a pool of "warm" resources that are always ready to service requests
+* Storage and processing are separate, so you can scale down to zero processing and pay only for storage.
+
+
 
 
 ## AWS CloudTrail
@@ -968,6 +1020,9 @@ launch and run popular file systems that are fully managed by AWS
   * A trail can apply to one region or all regions.
 * If you have created an organization in AWS Organizations, you can create a trail that will log all events for all AWS accounts in that organization. Creating an organization trail helps you define a uniform event logging strategy for your organization.
 
+
+To trail an S3 bucket or global service: 
+1. Create the trail with both these flags: `--is-multi-region-trail` and  `--include-global-service-events`
 
 **Management events**
 * Provide information about management operations that are performed on resources in your AWS account. These are also known as control plane operations
@@ -1039,6 +1094,13 @@ ML-powered security service that helps you prevent data loss by automatically di
 
 Inspector is basically an automated security assessment service that helps improve the security and compliance of applications deployed on AWS.
 
+* automatically assesses applications for exposure, vulnerabilities, and deviations from best practices
+* alerts about potential vulnerabilities
+* After performing an assessment, Amazon Inspector produces a detailed list of security findings prioritized by level of severity
+* it checks with built-in rules that are updated by aws researchers and specialists
+* enforces security standards
+* you can check it via UI, and API.
+
 ## AWS Backups
 
 ## AWS Shield
@@ -1047,3 +1109,74 @@ Inspector is basically an automated security assessment service that helps impro
 * For higher levels of protection against attacks targeting your applications running on Amazon Elastic Compute Cloud (EC2), Elastic Load Balancing(ELB), Amazon CloudFront, and Amazon Route 53 resources, you can subscribe to AWS Shield Advanced.
   * AWS Shield Advanced provides additional detection and mitigation against large and sophisticated DDoS attacks, near real-time visibility into attacks, and integration with AWS WAF
   * 24x7 access to the AWS DDoS Response Team (DRT) and protection against DDoS related spikes in your Amazon Elastic Compute Cloud (EC2), Elastic Load Balancing(ELB), Amazon CloudFront, and Amazon Route 53 charges.
+
+## SNS
+
+* fully managed messaging service for both application-to-application (A2A) and application-to-person (A2P) communication
+* A2A pub/sub functionality provides topics for high-throughput, push-based, many-to-many messaging between distributed systems, microservices, and event-driven serverless applications
+* A2P functionality enables you to send messages to users at scale via SMS, mobile push, and email.
+* 256 KB MAX message size.
+* Can be sent in JSON and RAW format.
+* Amazon SNS supports VPC Endpoints (VPCE) via AWS PrivateLink. You can use VPC Endpoints to privately publish messages to Amazon SNS topics, from an Amazon Virtual Private Cloud (VPC), without traversing the public internet
+
+![Subnets](img/sns.png)
+
+Message filtering
+
+* The subscriber creates a filter policy, so that it only gets the notifications it is interested in, as opposed to receiving every single message posted to the topic
+
+## AWS CloudHSM
+
+Cloud-based hardware security module (HSM) that enables you to easily generate and use your own encryption keys on the AWS Cloud.
+
+An HSM is a hardware device that safeguards and manages digital keys, provides tamper evidence such as visible signs of tampering or logging and alerting.
+
+* manage your own encryption keys using FIPS 140-2 Level 3 validated HSMs
+* AWS CloudHSM is an open solution that eliminates vendor lock-in
+* supports multi-factor authentication (MFA) using tokens you provide.
+* 
+* If you reset and lose the master key, you cannot recover it.
+
+Pricing:
+* It's billed hourly, at around 1.45 dollars per hour.
+
+## AWS Trusted Advisor
+
+* real time guidance to help you provision your resources following AWS best practices
+* optimize your AWS infrastructure, improve security and performance, reduce your overall costs, and monitor service limits
+* these are just recommendations real time for almost everything you do in AWS
+* AWS Basic Support and AWS Developer Support customers get access to 6 security checks
+
+
+## AWS PrivateLink
+
+* private connectivity between VPCs, AWS services, and your on-premises networks, without exposing your traffic to the public internet.
+* To use AWS PrivateLink, create an interface VPC endpoint for a service outside of your VPC.
+  * This creates an elastic network interface in your subnet with a private IP address that serves as an entry point for traffic destined to the service.
+* You can create your own AWS PrivateLink-powered service (endpoint service) and enable other AWS customers to access your service.
+* Interface VPC endpoints support private connectivity over AWS Direct Connect, so that applications in your premises will be able to connect to these services via the Amazon private network
+* You get billed per hour and GB transferred.
+
+## AWS X-RAY
+
+Analyze and debug production, distributed applications
+
+* Just integrate the X-Ray SDK with your application and install the X-Ray agent.
+* AWS X-Ray supports tracing for applications that are written in Node.js, Java, and .NET.
+* You can set the trace sampling rate that is best suited for your production applications or applications in development
+
+## AWS ParallelCluster 
+
+AWS-supported open-source cluster management tool that makes it easy for you to deploy and manage High-Performance Computing (HPC) clusters on AWS
+
+## AWS Control Tower
+
+easiest way to set up and govern a new, secure, multi-account AWS environment
+
+## AWS Resource Access Manager
+
+Share AWS resources with any AWS account or within your AWS Organization
+
+* You can share AWS Transit Gateways, Subnets, AWS License Manager configurations, and Amazon Route 53 Resolver rules resources with RAM
+* RAM eliminates the need to create duplicate resources in multiple accounts
+* create resources centrally in a multi-account environment, and use RAM to share those resources across accounts in three simple steps: create a Resource Share, specify resources, and specify accounts. RAM is available to you at no additional charge.
